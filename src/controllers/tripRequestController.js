@@ -6,11 +6,11 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 export const createTripRequest = async (req, res, next) => {
   try {
-    const { budget, days, destination, mail, members, travellers } = req.body;
+    const { budget, days, destination, mail, members, travellers, startDate, endDate } = req.body;
 
-    if (!destination || !mail || !members || !days || !Array.isArray(travellers)) {
+    if (!destination || !mail || !members || !days || !Array.isArray(travellers) || !startDate || !endDate) {
       return res.status(400).json({
-        message: "Mail, destination, members, days, and travellers are required",
+        message: "Mail, destination, members, days, travellers, startDate, and endDate are required",
         success: false,
       });
     }
@@ -66,6 +66,8 @@ export const createTripRequest = async (req, res, next) => {
       travellers: normalizedTravellers,
       days: Number(days),
       budget: budget === "" || budget === undefined ? null : Number(budget),
+      startDate,
+      endDate,
     });
 
     let emailStatus = {

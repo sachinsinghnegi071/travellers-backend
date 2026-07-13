@@ -44,11 +44,18 @@ const tripRequestSchema = new mongoose.Schema(
         message: "At least one traveller is required",
       },
     },
+    startDate: {
+      type: Date,
+      required: true,
+    },
+    endDate: {
+      type: Date,
+      required: true,
+    },
     days: {
       type: Number,
       required: true,
       min: 1,
-      max: 7,
     },
     budget: {
       type: Number,

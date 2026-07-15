@@ -1,10 +1,10 @@
 import express from 'express';
 import { upload, uploadToCloudinary } from '../middleware/uploadMiddleware.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, adminOrHotel } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', protect, admin, upload.single('image'), async (req, res) => {
+router.post('/', protect, adminOrHotel, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Please upload an image file.' });

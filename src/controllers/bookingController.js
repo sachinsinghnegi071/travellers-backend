@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer';
 import Booking from '../models/Booking.js';
 import Destination from '../models/Destination.js';
 import User from '../models/User.js';
+import Hotel from '../models/Hotel.js';
 
 // Since the user may not have a real Razorpay account configured, 
 // we'll use fallback test keys if none are provided in env.
@@ -46,7 +47,7 @@ const getEmailTransporter = async () => {
 
 export const createBooking = async (req, res) => {
   try {
-    const { destinationId, startDate, endDate, members, travellers, totalAmount, rooms, roomDetails } = req.body;
+    const { destinationId, startDate, endDate, members, travellers, totalAmount, rooms, roomDetails, selectedHotels } = req.body;
     
     // We expect the frontend to pass the user context via JWT (req.user),
     // but we can also fall back to allowing guest bookings by creating a temp user if needed.
@@ -82,6 +83,8 @@ export const createBooking = async (req, res) => {
     const guidePrice = destination.guidePricePerDay || 0;
     const otherPrice = destination.otherPricePerDay || 0;
 
+    let bookingSelectedHotels = [];
+
     if (hotelPrice > 0 || foodPrice > 0 || ridePrice > 0 || trekkingPrice > 0 || guidePrice > 0 || otherPrice > 0) {
       let days = 0;
       if (startDate && endDate) {
@@ -101,16 +104,59 @@ export const createBooking = async (req, res) => {
         ? roomDetails 
         : Array.from({ length: selectedRooms }, () => ({ bedPreference: 'Double Bed' }));
 
+      // Fetch all custom hotels if selected
+      let hotelsMap = {};
+      if (Array.isArray(selectedHotels) && selectedHotels.length > 0) {
+        const hotelIds = selectedHotels.map(sh => sh.hotelId).filter(Boolean);
+        const hotels = await Hotel.find({ _id: { $in: hotelIds } });
+        hotels.forEach(h => {
+          hotelsMap[h._id.toString()] = h;
+        });
+      }
+
       let hotelTotal = 0;
-      for (const room of details) {
-        const selectedBed = room.bedPreference || 'Double Bed';
-        let rate = hotelPrice;
-        if (selectedBed === 'Double Bed') {
-          rate = destination.doubleBedPricePerDay || hotelPrice;
-        } else if (selectedBed === 'Single Bed') {
-          rate = destination.singleBedPricePerDay || hotelPrice;
+      for (let d = 1; d <= days; d++) {
+        const customSelect = Array.isArray(selectedHotels)
+          ? selectedHotels.find(sh => Number(sh.day) === d)
+          : null;
+
+        let hotelItem = null;
+        if (customSelect && customSelect.hotelId) {
+          hotelItem = hotelsMap[customSelect.hotelId];
         }
-        hotelTotal += days * rate;
+
+        let dayRoomsCost = 0;
+        for (const room of details) {
+          const selectedBed = room.bedPreference || 'Double Bed';
+          let rate = hotelPrice;
+
+          if (hotelItem) {
+            if (selectedBed === 'Double Bed') {
+              rate = hotelItem.doubleBedPrice !== undefined ? hotelItem.doubleBedPrice : hotelPrice;
+            } else if (selectedBed === 'Single Bed') {
+              rate = hotelItem.singleBedPrice !== undefined ? hotelItem.singleBedPrice : hotelPrice;
+            }
+          } else {
+            if (selectedBed === 'Double Bed') {
+              rate = destination.doubleBedPricePerDay || hotelPrice;
+            } else if (selectedBed === 'Single Bed') {
+              rate = destination.singleBedPricePerDay || hotelPrice;
+            }
+          }
+          dayRoomsCost += rate;
+        }
+
+        hotelTotal += dayRoomsCost;
+
+        if (hotelItem) {
+          bookingSelectedHotels.push({
+            day: d,
+            location: hotelItem.location,
+            hotel: hotelItem._id,
+            hotelName: hotelItem.name,
+            price: dayRoomsCost
+          });
+        }
       }
       
       const foodTotal = days * foodPrice * members;
@@ -136,6 +182,7 @@ export const createBooking = async (req, res) => {
         ? roomDetails
         : Array.from({ length: Number(rooms || 1) }, () => ({ bedPreference: 'Double Bed' })),
       travellers,
+      selectedHotels: bookingSelectedHotels,
       totalAmount: calculatedAmount,
       status: 'Pending',
       paymentStatus: 'Pending'

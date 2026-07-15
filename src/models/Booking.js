@@ -22,6 +22,15 @@ const bookingSchema = new mongoose.Schema(
         gender: { type: String, enum: ['Male', 'Female'], default: 'Male' },
       }
     ],
+    selectedHotels: [
+      {
+        day: { type: Number },
+        location: { type: String },
+        hotel: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel' },
+        hotelName: { type: String },
+        price: { type: Number }
+      }
+    ],
     totalAmount: { type: Number, required: true },
     status: { type: String, enum: ['Pending', 'Confirmed', 'Cancelled'], default: 'Pending' },
     paymentId: { type: String },

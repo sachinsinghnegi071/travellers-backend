@@ -7,6 +7,7 @@ import destinationRoutes from "./routes/destinationRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import hotelRoutes from "./routes/hotelRoutes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/destinations", destinationRoutes);
 app.use("/api/payment", bookingRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/hotels", hotelRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
